@@ -1,8 +1,10 @@
 import { Router } from "express";
+import multer from "multer"
 import auth from "../middlewares/auth.js";
-import {  captureOrderPaypalController, createOrderController, createOrderPaypalController, deleteOrder, getOrderDetailsController, getTotalOrdersCountController, getUserOrderDetailsController, totalSalesController, totalUsersController, updateOrderStatusController } from "../controllers/order.controller.js";
+import {  captureOrderPaypalController, createOrderController, createOrderPaypalController, deleteImageController, deleteOrder, getOrderDetailsController, getTotalOrdersCountController, getUserOrderDetailsController, totalSalesController, totalUsersController, updateOrderStatusController, uploadOrderFiles } from "../controllers/order.controller.js";
 
 const orderRouter = Router();
+const upload = multer({ dest: "uploads/" });
 
 orderRouter.post('/create',auth,createOrderController)
 orderRouter.get("/order-list",auth,getOrderDetailsController)
@@ -14,5 +16,10 @@ orderRouter.get('/sales',auth,totalSalesController)
 orderRouter.get('/users',auth,totalUsersController)
 orderRouter.get('/order-list/orders',auth,getUserOrderDetailsController)
 orderRouter.delete('/deleteOrder/:id',auth,deleteOrder)
-
+orderRouter.post(
+  "/upload-order-files",
+  upload.array("files"),
+  uploadOrderFiles
+);
+orderRouter.delete("/delete-file", deleteImageController);
 export default orderRouter;

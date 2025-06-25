@@ -4,6 +4,7 @@ import UserModel from '../models/user.model.js';
 import paypal from "@paypal/checkout-server-sdk";
 import OrderConfirmationEmail from "../utils/orderEmailTemplate.js";
 import sendEmailFun from "../config/sendEmail.js";
+import {uploadFiles,deleteImage} from "../utils/ImageUpload.js"
 
 export const createOrderController = async (request, response) => {
     try {
@@ -703,3 +704,110 @@ export async function deleteOrder(request, response) {
         message: "Order Deleted!",
     });
 }
+
+export const uploadOrderFiles = async (req, res) => {
+  try {
+    const { orderId, uploaderType } = req.body; // "user" or "admin"
+
+    if (!orderId || !["user", "admin"].includes(uploaderType)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid orderId or uploaderType" });
+    }
+
+    // Use your own helper function
+    const result = await uploadFiles(req);
+
+    if (!result.success) {
+      return res
+        .status(500)
+        .json({
+          success: false,
+          message: "File upload failed",
+          error: result.error,
+        });
+    }
+
+    const filesToAdd = result.images;
+
+    const updateField =
+      uploaderType === "user"
+        ? { $push: { userFiles: { $each: filesToAdd } } }
+        : { $push: { adminFiles: { $each: filesToAdd } } };
+
+    const updatedOrder = await OrderModel.findByIdAndUpdate(
+      orderId,
+      updateField,
+      { new: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Files uploaded and attached to order successfully",
+      files: filesToAdd,
+      order: updatedOrder,
+    });
+  } catch (err) {
+    console.error("Upload failed:", err);
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Internal server error",
+        error: err.message,
+      });
+  }
+};
+
+
+export const deleteImageController = async (req, res) => {
+  try {
+    const { fileUrl, imageUrl, orderId, fileType } = req.body;
+    const urlToDelete = fileUrl || imageUrl;
+
+    if (!urlToDelete || !orderId || !fileType) {
+      return res.status(400).json({
+        success: false,
+        message: "fileUrl/imageUrl, orderId, and fileType are required",
+      });
+    }
+
+    // Step 1: Delete image from cloud
+    const result = await deleteImage(urlToDelete);
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.error || "Failed to delete file from cloud",
+      });
+    }
+
+    // Step 2: Remove file reference from DB
+    const updateField = fileType === "user" ? "userFiles" : "adminFiles";
+    const updateResult = await OrderModel.findByIdAndUpdate(
+      orderId,
+      { $pull: { [updateField]: { fileUrl: urlToDelete } } },
+      { new: true }
+    );
+
+    if (!updateResult) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found or file not associated with it",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "File deleted successfully from cloud and database",
+      order: updateResult,
+    });
+  } catch (error) {
+    console.error("Error in deleteImageController:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting file",
+      error: error.message,
+    });
+  }
+};

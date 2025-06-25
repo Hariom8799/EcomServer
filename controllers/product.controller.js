@@ -2,11 +2,10 @@ import ProductModel from '../models/product.modal.js';
 import ProductRAMSModel from '../models/productRAMS.js';
 import ProductWEIGHTModel from '../models/productWEIGHT.js';
 import ProductSIZEModel from '../models/productSIZE.js';
+import { uploadFiles, deleteImage } from "../utils/ImageUpload.js";
 
 import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
-import { request } from 'http';
-
 
 cloudinary.config({
     cloud_name: process.env.cloudinary_Config_Cloud_Name,
@@ -95,68 +94,135 @@ export async function uploadBannerImages(request, response) {
 
 
 //create product
+// export async function createProduct(request, response) {
+//     try {
+
+//         let product = new ProductModel({
+//             name: request.body.name,
+//             description: request.body.description,
+//             images: imagesArr,
+//             bannerimages: bannerImage,
+//             bannerTitleName: request.body.bannerTitleName,
+//             isDisplayOnHomeBanner: request.body.isDisplayOnHomeBanner,
+//             brand: request.body.brand,
+//             price: request.body.price,
+//             oldPrice: request.body.oldPrice,
+//             catName: request.body.catName,
+//             category: request.body.category,
+//             catId: request.body.catId,
+//             subCatId: request.body.subCatId,
+//             subCat: request.body.subCat,
+//             thirdsubCat: request.body.thirdsubCat,
+//             thirdsubCatId: request.body.thirdsubCatId,
+//             countInStock: request.body.countInStock,
+//             rating: request.body.rating,
+//             isFeatured: request.body.isFeatured,
+//             discount: request.body.discount,
+//             productRam: request.body.productRam,
+//             size: request.body.size,
+//             productWeight: request.body.productWeight,
+//         });
+
+
+//         product = await product.save();
+
+//         console.log(product)
+
+//         if (!product) {
+//             response.status(500).json({
+//                 error: true,
+//                 success: false,
+//                 message: "Product Not created"
+//             });
+//         }
+
+
+//         imagesArr = [];
+
+//         return response.status(200).json({
+//             message: "Product Created successfully",
+//             error: false,
+//             success: true,
+//             product: product
+//         })
+
+
+//     } catch (error) {
+//         return response.status(500).json({
+//             message: error.message || error,
+//             error: true,
+//             success: false
+//         })
+//     }
+// }
+
 export async function createProduct(request, response) {
-    try {
+  try {
+    // Upload images using your existing helper (e.g., multer + Cloudinary/S3)
+    const uploadResult = await uploadFiles(request);
 
-        let product = new ProductModel({
-            name: request.body.name,
-            description: request.body.description,
-            images: imagesArr,
-            bannerimages: bannerImage,
-            bannerTitleName: request.body.bannerTitleName,
-            isDisplayOnHomeBanner: request.body.isDisplayOnHomeBanner,
-            brand: request.body.brand,
-            price: request.body.price,
-            oldPrice: request.body.oldPrice,
-            catName: request.body.catName,
-            category: request.body.category,
-            catId: request.body.catId,
-            subCatId: request.body.subCatId,
-            subCat: request.body.subCat,
-            thirdsubCat: request.body.thirdsubCat,
-            thirdsubCatId: request.body.thirdsubCatId,
-            countInStock: request.body.countInStock,
-            rating: request.body.rating,
-            isFeatured: request.body.isFeatured,
-            discount: request.body.discount,
-            productRam: request.body.productRam,
-            size: request.body.size,
-            productWeight: request.body.productWeight,
-
-        });
-
-        product = await product.save();
-
-        console.log(product)
-
-        if (!product) {
-            response.status(500).json({
-                error: true,
-                success: false,
-                message: "Product Not created"
-            });
-        }
-
-
-        imagesArr = [];
-
-        return response.status(200).json({
-            message: "Product Created successfully",
-            error: false,
-            success: true,
-            product: product
-        })
-
-
-    } catch (error) {
-        return response.status(500).json({
-            message: error.message || error,
-            error: true,
-            success: false
-        })
+    if (!uploadResult.success) {
+      return response.status(500).json({
+        message: uploadResult.error,
+        success: false,
+        error: true,
+      });
     }
-}
 
+    // Build the files array for the model
+    const filesArr = uploadResult.images || [];
+
+    const product = new ProductModel({
+      name: request.body.name,
+      description: request.body.description,
+      images: request.body.images || [],
+      bannerimages: request.body.bannerimages || [],
+      bannerTitleName: request.body.bannerTitleName,
+      isDisplayOnHomeBanner: request.body.isDisplayOnHomeBanner,
+      brand: request.body.brand,
+      price: request.body.price,
+      oldPrice: request.body.oldPrice,
+      catName: request.body.catName,
+      category: request.body.category,
+      catId: request.body.catId,
+      subCatId: request.body.subCatId,
+      subCat: request.body.subCat,
+      thirdsubCat: request.body.thirdsubCat,
+      thirdsubCatId: request.body.thirdsubCatId,
+      countInStock: request.body.countInStock,
+      rating: request.body.rating,
+      isFeatured: request.body.isFeatured,
+      discount: request.body.discount,
+      productRam: request.body.productRam || [],
+      size: request.body.size || [],
+      productWeight: request.body.productWeight || [],
+      files: filesArr.length > 0 ? filesArr : undefined,
+    });
+
+    const savedProduct = await product.save();
+
+    if (!savedProduct) {
+      return response.status(500).json({
+        error: true,
+        success: false,
+        message: "Product not created",
+      });
+    }
+
+    return response.status(200).json({
+      message: "Product created successfully",
+      error: false,
+      success: true,
+      product: savedProduct,
+    });
+  } catch (error) {
+    return response.status(500).json({
+      message: error.message || error,
+      error: true,
+      success: false,
+    });
+  }
+}
 
 
 //get all products
@@ -758,104 +824,219 @@ export async function getAllProductsBanners(request, response) {
 
 
 //delete product
-export async function deleteProduct(request, response) {
+// export async function deleteProduct(request, response) {
 
-    const product = await ProductModel.findById(request.params.id).populate("category");
+//     const product = await ProductModel.findById(request.params.id).populate("category");
+
+//     if (!product) {
+//         return response.status(404).json({
+//             message: "Product Not found",
+//             error: true,
+//             success: false
+//         })
+//     }
+
+//     const images = product.images;
+
+//     let img = "";
+//     for (img of images) {
+//         const imgUrl = img;
+//         const urlArr = imgUrl.split("/");
+//         const image = urlArr[urlArr.length - 1];
+
+//         const imageName = image.split(".")[0];
+
+//         if (imageName) {
+//             cloudinary.uploader.destroy(imageName, (error, result) => {
+//                 // console.log(error, result);
+//             });
+//         }
+
+
+//     }
+
+//     const deletedProduct = await ProductModel.findByIdAndDelete(request.params.id);
+
+//     if (!deletedProduct) {
+//         response.status(404).json({
+//             message: "Product not deleted!",
+//             success: false,
+//             error: true
+//         });
+//     }
+
+//     return response.status(200).json({
+//         success: true,
+//         error: false,
+//         message: "Product Deleted!",
+//     });
+// }
+
+export async function deleteProduct(request, response) {
+  try {
+    const product = await ProductModel.findById(request.params.id).populate(
+      "category"
+    );
 
     if (!product) {
-        return response.status(404).json({
-            message: "Product Not found",
-            error: true,
-            success: false
-        })
+      return response.status(404).json({
+        message: "Product not found",
+        error: true,
+        success: false,
+      });
     }
 
-    const images = product.images;
+    // Delete images
+    const imageUrls = [
+      ...(product.images || []),
+      ...(product.bannerimages || []),
+    ];
+    for (const imgUrl of imageUrls) {
+      if (imgUrl) {
+        await deleteImage(imgUrl);
+      }
+    }
 
-    let img = "";
-    for (img of images) {
-        const imgUrl = img;
-        const urlArr = imgUrl.split("/");
-        const image = urlArr[urlArr.length - 1];
-
-        const imageName = image.split(".")[0];
-
-        if (imageName) {
-            cloudinary.uploader.destroy(imageName, (error, result) => {
-                // console.log(error, result);
-            });
+    // Delete product files
+    if (product.files && product.files.length > 0) {
+      for (const file of product.files) {
+        if (file.fileUrl) {
+          await deleteImage(file.fileUrl);
         }
-
-
+      }
     }
 
-    const deletedProduct = await ProductModel.findByIdAndDelete(request.params.id);
+    // Delete product from database
+    const deletedProduct = await ProductModel.findByIdAndDelete(
+      request.params.id
+    );
 
     if (!deletedProduct) {
-        response.status(404).json({
-            message: "Product not deleted!",
-            success: false,
-            error: true
-        });
+      return response.status(500).json({
+        message: "Product not deleted!",
+        success: false,
+        error: true,
+      });
     }
 
     return response.status(200).json({
-        success: true,
-        error: false,
-        message: "Product Deleted!",
+      success: true,
+      error: false,
+      message: "Product deleted successfully!",
     });
+  } catch (error) {
+    return response.status(500).json({
+      message: error.message || error,
+      success: false,
+      error: true,
+    });
+  }
 }
 
-
 //delete multiple products
+// export async function deleteMultipleProduct(request, response) {
+//     const { ids } = request.body;
+
+//     if (!ids || !Array.isArray(ids)) {
+//         return response.status(400).json({ error: true, success: false, message: 'Invalid input' });
+//     }
+
+
+//     for (let i = 0; i < ids?.length; i++) {
+//         const product = await ProductModel.findById(ids[i]);
+
+//         const images = product.images;
+
+//         let img = "";
+//         for (img of images) {
+//             const imgUrl = img;
+//             const urlArr = imgUrl.split("/");
+//             const image = urlArr[urlArr.length - 1];
+
+//             const imageName = image.split(".")[0];
+
+//             if (imageName) {
+//                 cloudinary.uploader.destroy(imageName, (error, result) => {
+//                     // console.log(error, result);
+//                 });
+//             }
+
+
+//         }
+
+//     }
+
+//     try {
+//         await ProductModel.deleteMany({ _id: { $in: ids } });
+//         return response.status(200).json({
+//             message: "Product delete successfully",
+//             error: false,
+//             success: true
+//         })
+
+//     } catch (error) {
+//         return response.status(500).json({
+//             message: error.message || error,
+//             error: true,
+//             success: false
+//         })
+//     }
+
+// }
+
 export async function deleteMultipleProduct(request, response) {
-    const { ids } = request.body;
+  const { ids } = request.body;
 
-    if (!ids || !Array.isArray(ids)) {
-        return response.status(400).json({ error: true, success: false, message: 'Invalid input' });
-    }
+  if (!ids || !Array.isArray(ids)) {
+    return response.status(400).json({
+      error: true,
+      success: false,
+      message: "Invalid input. 'ids' must be an array.",
+    });
+  }
 
+  try {
+    for (const id of ids) {
+      const product = await ProductModel.findById(id);
 
-    for (let i = 0; i < ids?.length; i++) {
-        const product = await ProductModel.findById(ids[i]);
+      if (!product) continue;
 
-        const images = product.images;
-
-        let img = "";
-        for (img of images) {
-            const imgUrl = img;
-            const urlArr = imgUrl.split("/");
-            const image = urlArr[urlArr.length - 1];
-
-            const imageName = image.split(".")[0];
-
-            if (imageName) {
-                cloudinary.uploader.destroy(imageName, (error, result) => {
-                    // console.log(error, result);
-                });
-            }
-
-
+      // Delete product images (images + bannerimages)
+      const imageUrls = [
+        ...(product.images || []),
+        ...(product.bannerimages || []),
+      ];
+      for (const imgUrl of imageUrls) {
+        if (imgUrl) {
+          await deleteImage(imgUrl);
         }
+      }
 
+      // Delete product files
+      if (product.files && product.files.length > 0) {
+        for (const file of product.files) {
+          if (file.fileUrl) {
+            await deleteImage(file.fileUrl);
+          }
+        }
+      }
     }
 
-    try {
-        await ProductModel.deleteMany({ _id: { $in: ids } });
-        return response.status(200).json({
-            message: "Product delete successfully",
-            error: false,
-            success: true
-        })
+    // Delete all products from DB
+    await ProductModel.deleteMany({ _id: { $in: ids } });
 
-    } catch (error) {
-        return response.status(500).json({
-            message: error.message || error,
-            error: true,
-            success: false
-        })
-    }
-
+    return response.status(200).json({
+      message: "Products deleted successfully",
+      error: false,
+      success: true,
+    });
+  } catch (error) {
+    return response.status(500).json({
+      message: error.message || error,
+      error: true,
+      success: false,
+    });
+  }
 }
 
 //get single product 
@@ -914,62 +1095,152 @@ export async function removeImageFromCloudinary(request, response) {
 
 
 //updated product 
+// export async function updateProduct(request, response) {
+//     try {
+//         const product = await ProductModel.findByIdAndUpdate(
+//             request.params.id,
+//             {
+//                 name: request.body.name,
+//                 subCat: request.body.subCat,
+//                 description: request.body.description,
+//                 bannerimages: request.body.bannerimages,
+//                 bannerTitleName: request.body.bannerTitleName,
+//                 isDisplayOnHomeBanner: request.body.isDisplayOnHomeBanner,
+//                 images: request.body.images,
+//                 bannerTitleName: request.body.bannerTitleName,
+//                 brand: request.body.brand,
+//                 price: request.body.price,
+//                 oldPrice: request.body.oldPrice,
+//                 catId: request.body.catId,
+//                 catName: request.body.catName,
+//                 subCat: request.body.subCat,
+//                 subCatId: request.body.subCatId,
+//                 category: request.body.category,
+//                 thirdsubCat: request.body.thirdsubCat,
+//                 thirdsubCatId: request.body.thirdsubCatId,
+//                 countInStock: request.body.countInStock,
+//                 rating: request.body.rating,
+//                 isFeatured: request.body.isFeatured,
+//                 productRam: request.body.productRam,
+//                 size: request.body.size,
+//                 productWeight: request.body.productWeight,
+//             },
+//             { new: true }
+//         );
+
+
+//         if (!product) {
+//             return response.status(404).json({
+//                 message: "the product can not be updated!",
+//                 status: false,
+//             });
+//         }
+
+//         imagesArr = [];
+
+//         return response.status(200).json({
+//             message: "The product is updated",
+//             error: false,
+//             success: true
+//         })
+
+//     } catch (error) {
+//         return response.status(500).json({
+//             message: error.message || error,
+//             error: true,
+//             success: false
+//         })
+//     }
+// }
+
 export async function updateProduct(request, response) {
-    try {
-        const product = await ProductModel.findByIdAndUpdate(
-            request.params.id,
-            {
-                name: request.body.name,
-                subCat: request.body.subCat,
-                description: request.body.description,
-                bannerimages: request.body.bannerimages,
-                bannerTitleName: request.body.bannerTitleName,
-                isDisplayOnHomeBanner: request.body.isDisplayOnHomeBanner,
-                images: request.body.images,
-                bannerTitleName: request.body.bannerTitleName,
-                brand: request.body.brand,
-                price: request.body.price,
-                oldPrice: request.body.oldPrice,
-                catId: request.body.catId,
-                catName: request.body.catName,
-                subCat: request.body.subCat,
-                subCatId: request.body.subCatId,
-                category: request.body.category,
-                thirdsubCat: request.body.thirdsubCat,
-                thirdsubCatId: request.body.thirdsubCatId,
-                countInStock: request.body.countInStock,
-                rating: request.body.rating,
-                isFeatured: request.body.isFeatured,
-                productRam: request.body.productRam,
-                size: request.body.size,
-                productWeight: request.body.productWeight,
-            },
-            { new: true }
-        );
+  try {
+    const productId = request.params.id;
 
+    // Get existing files to keep (if any)
+    const existingFiles = request.body.existingFiles
+      ? JSON.parse(request.body.existingFiles)
+      : [];
 
-        if (!product) {
-            return response.status(404).json({
-                message: "the product can not be updated!",
-                status: false,
-            });
-        }
+    // Get list of files to delete by URL
+    const deletedFiles = request.body.deletedFiles
+      ? JSON.parse(request.body.deletedFiles)
+      : [];
 
-        imagesArr = [];
-
-        return response.status(200).json({
-            message: "The product is updated",
-            error: false,
-            success: true
-        })
-
-    } catch (error) {
-        return response.status(500).json({
-            message: error.message || error,
-            error: true,
-            success: false
-        })
+    // Delete files from Cloudinary
+    for (const fileUrl of deletedFiles) {
+      await deleteImage(fileUrl);
     }
+
+    // Upload new files (if any)
+    let uploadedFiles = [];
+    if (request.files && request.files.length > 0) {
+      const uploadResult = await uploadFiles(request);
+      if (!uploadResult.success) {
+        return response.status(500).json({
+          message: uploadResult.error,
+          success: false,
+          error: true,
+        });
+      }
+      uploadedFiles = uploadResult.images;
+    }
+
+    // Final file list: keep existing + newly uploaded
+    const finalFiles = [...existingFiles, ...uploadedFiles];
+
+    // Update the product
+    const updatedProduct = await ProductModel.findByIdAndUpdate(
+      productId,
+      {
+        name: request.body.name,
+        subCat: request.body.subCat,
+        description: request.body.description,
+        bannerimages: request.body.bannerimages,
+        bannerTitleName: request.body.bannerTitleName,
+        isDisplayOnHomeBanner: request.body.isDisplayOnHomeBanner,
+        images: request.body.images,
+        brand: request.body.brand,
+        price: request.body.price,
+        oldPrice: request.body.oldPrice,
+        catId: request.body.catId,
+        catName: request.body.catName,
+        subCatId: request.body.subCatId,
+        category: request.body.category,
+        thirdsubCat: request.body.thirdsubCat,
+        thirdsubCatId: request.body.thirdsubCatId,
+        countInStock: request.body.countInStock,
+        rating: request.body.rating,
+        isFeatured: request.body.isFeatured,
+        productRam: request.body.productRam,
+        size: request.body.size,
+        productWeight: request.body.productWeight,
+        files: finalFiles,
+      },
+      { new: true }
+    );
+
+    if (!updatedProduct) {
+      return response.status(404).json({
+        message: "The product could not be updated!",
+        success: false,
+        error: true,
+      });
+    }
+
+    return response.status(200).json({
+      message: "The product has been updated.",
+      product: updatedProduct,
+      success: true,
+      error: false,
+    });
+  } catch (error) {
+    return response.status(500).json({
+      message: error.message || error,
+      error: true,
+      success: false,
+    });
+  }
 }
 
 
@@ -1583,4 +1854,53 @@ export async function searchProductController(request, response) {
             success: false
         })
     }
+}
+
+
+export async function addFilesToProduct(request, response) {
+  try {
+    const productId = request.params.id;
+
+    // Check if product exists
+    const product = await ProductModel.findById(productId);
+    if (!product) {
+      return response.status(404).json({
+        message: "Product not found",
+        success: false,
+        error: true,
+      });
+    }
+
+    // Upload new files (from form-data)
+    let uploadedFiles = [];
+    if (request.files && request.files.length > 0) {
+      const uploadResult = await uploadFiles(request);
+      if (!uploadResult.success) {
+        return response.status(500).json({
+          message: uploadResult.error,
+          success: false,
+          error: true,
+        });
+      }
+      uploadedFiles = uploadResult.images;
+    }
+
+    // Append to existing files
+    product.files.push(...uploadedFiles);
+
+    const updatedProduct = await product.save();
+
+    return response.status(200).json({
+      message: "Files added to product successfully",
+      product: updatedProduct,
+      success: true,
+      error: false,
+    });
+  } catch (error) {
+    return response.status(500).json({
+      message: error.message || error,
+      success: false,
+      error: true,
+    });
+  }
 }

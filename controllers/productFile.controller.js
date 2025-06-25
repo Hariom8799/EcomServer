@@ -1,5 +1,5 @@
 import ProductFileModel from "../models/ProductFile.js";
-import {deleteImage,uploadImages} from "../utils/ImageUpload.js"
+import {deleteImage,uploadFiles} from "../utils/ImageUpload.js"
 
 export const getProductFiles = async (req, res)=>{
     try{
@@ -84,7 +84,7 @@ export const getProductFileByProductId = async (req, res) => {
 export const createProductFile = async (req, res) => {
   try {
     const { product, users } = req.body;
-    const uploadResult = await uploadImages(req);
+    const uploadResult = await uploadFiles(req);
     if (!uploadResult.success) {
       return res
         .status(500)
@@ -118,7 +118,7 @@ export const updateProductFile = async (req, res) => {
     }
 
     // Upload new files (if any)
-    const uploadResult = await uploadImages(req);
+    const uploadResult = await uploadFiles(req);
     if (!uploadResult.success) {
       return res.status(500).json({ message: uploadResult.error, success: false, error: true });
     }

@@ -9,24 +9,64 @@ cloudinary.config({
   secure: true,
 });
 
-export async function uploadImages(request) {
+// export async function uploadImages(request) {
+//   try {
+//     const image = request.files;
+//     const imagesArr = [];
+
+//     const options = {
+//       folder: "ProductFile",
+//       use_filename: true,
+//       unique_filename: false,
+//     };
+
+//     for (let i = 0; i < image?.length; i++) {
+//       const result = await cloudinary.uploader.upload(image[i].path, options);
+//       imagesArr.push(result.secure_url);
+//       fs.unlinkSync(image[i].path); // clean up local file
+//     }
+
+//     return { success: true, images: imagesArr };
+//   } catch (error) {
+//     return { success: false, error: error.message };
+//   }
+// }
+
+export async function uploadFiles(request) {
   try {
-    const image = request.files;
-    const imagesArr = [];
+    const imageFiles = request.files; // files uploaded via multer
+    const { fileNames = [], folderNames = [] } = request.body; // form fields
+    const uploadedFiles = [];
 
-    const options = {
-      folder: "ProductFile",
-      use_filename: true,
-      unique_filename: false,
-    };
+    for (let i = 0; i < imageFiles.length; i++) {
+      const file = imageFiles[i];
+      const fileName = Array.isArray(fileNames) ? fileNames[i] : fileNames;
+      const folderName = Array.isArray(folderNames)
+        ? folderNames[i]
+        : folderNames;
 
-    for (let i = 0; i < image?.length; i++) {
-      const result = await cloudinary.uploader.upload(image[i].path, options);
-      imagesArr.push(result.secure_url);
-      fs.unlinkSync(image[i].path); // clean up local file
+      const cloudinaryOptions = {
+        folder: folderName ? `ProductFile/${folderName}` : "ProductFile",
+        use_filename: true,
+        unique_filename: false,
+        public_id: fileName ? fileName.split(".")[0] : undefined,
+      };
+
+      const result = await cloudinary.uploader.upload(
+        file.path,
+        cloudinaryOptions
+      );
+
+      uploadedFiles.push({
+        fileUrl: result.secure_url,
+        fileName: fileName || file.originalname,
+        folderName: folderName || "",
+      });
+
+      fs.unlinkSync(file.path); // clean up
     }
 
-    return { success: true, images: imagesArr };
+    return { success: true, images: uploadedFiles }; // now images include metadata
   } catch (error) {
     return { success: false, error: error.message };
   }

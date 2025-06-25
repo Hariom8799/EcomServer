@@ -1,5 +1,17 @@
 import mongoose from 'mongoose';
 
+const fileSchema = new mongoose.Schema({
+  fileUrl: {
+    type: String,
+  },
+  fileName: {
+    type: String,
+  },
+  folderName: {
+    type: String,
+  },
+});
+
 const productSchema = mongoose.Schema({
     name: {
         type: String,
@@ -104,9 +116,12 @@ const productSchema = mongoose.Schema({
         default: '',
     },
     isDisplayOnHomeBanner: {
-        type: Boolean,
+        type: Boolean,  
         default: false,
     },
+    files : [
+        fileSchema
+    ]
 },{
     timestamps : true
 });

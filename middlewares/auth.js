@@ -14,7 +14,7 @@ const auth = async(request,response,next)=>{
             })
         }
 
-        const decode = await jwt.verify(token,process.env.SECRET_KEY_ACCESS_TOKEN);
+        const decode = jwt.verify(token,process.env.SECRET_KEY_ACCESS_TOKEN);
 
         if(!decode){
             return response.status(401).json({
@@ -29,6 +29,7 @@ const auth = async(request,response,next)=>{
         next()
 
     } catch (error) {
+        console.log(error);
         return response.status(500).json({
             message : "You have not login",///error.message || error,
             error : true,
