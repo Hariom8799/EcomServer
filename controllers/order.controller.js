@@ -6,6 +6,25 @@ import OrderConfirmationEmail from "../utils/orderEmailTemplate.js";
 import sendEmailFun from "../config/sendEmail.js";
 import {uploadFiles,deleteImage} from "../utils/ImageUpload.js"
 
+// Import required modules for ZIP creation
+// const archiver = require("archiver"); // npm install archiver
+import archiver from "archiver";
+// const path = require("path");
+import path from "path"
+// const fs = require("fs");
+import fs from "fs";
+// const https = require("https");
+// const http = require("http"); http
+import https from "https"
+import http from "http"
+
+// Create ZIP archive
+const archive = archiver("zip", {
+  zlib: { level: 9 },
+});
+
+
+
 export const createOrderController = async (request, response) => {
     try {
 
@@ -705,60 +724,143 @@ export async function deleteOrder(request, response) {
     });
 }
 
+// export const uploadOrderFiles = async (req, res) => {
+//   try {
+//     const { orderId, uploaderType } = req.body; // "user" or "admin"
+
+//     if (!orderId || !["user", "admin"].includes(uploaderType)) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "Invalid orderId or uploaderType" });
+//     }
+
+//     // Use your own helper function
+//     const result = await uploadFiles(req);
+
+//     if (!result.success) {
+//       return res
+//         .status(500)
+//         .json({
+//           success: false,
+//           message: "File upload failed",
+//           error: result.error,
+//         });
+//     }
+
+//     const filesToAdd = result.images;
+
+//     const updateField =
+//       uploaderType === "user"
+//         ? { $push: { userFiles: { $each: filesToAdd } } }
+//         : { $push: { adminFiles: { $each: filesToAdd } } };
+
+//     const updatedOrder = await OrderModel.findByIdAndUpdate(
+//       orderId,
+//       updateField,
+//       { new: true }
+//     );
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Files uploaded and attached to order successfully",
+//       files: filesToAdd,
+//       order: updatedOrder,
+//     });
+//   } catch (err) {
+//     console.error("Upload failed:", err);
+//     res
+//       .status(500)
+//       .json({
+//         success: false,
+//         message: "Internal server error",
+//         error: err.message,
+//       });
+//   }
+// };
+
+// Updated uploadOrderFiles function
 export const uploadOrderFiles = async (req, res) => {
-  try {
-    const { orderId, uploaderType } = req.body; // "user" or "admin"
-
-    if (!orderId || !["user", "admin"].includes(uploaderType)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid orderId or uploaderType" });
-    }
-
-    // Use your own helper function
-    const result = await uploadFiles(req);
-
-    if (!result.success) {
-      return res
+    try {
+      const { orderId, uploaderType, folderName } = req.body;
+  
+      if (!orderId || !["user", "admin"].includes(uploaderType)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid orderId or uploaderType" });
+      }
+  
+      if (!folderName || folderName.trim() === "") {
+        return res
+          .status(400)
+          .json({ success: false, message: "Folder name is required" });
+      }
+  
+      // Use your existing uploadFiles helper function
+      const result = await uploadFiles(req);
+  
+      if (!result.success) {
+        return res
+          .status(500)
+          .json({
+            success: false,
+            message: "File upload failed",
+            error: result.error,
+          });
+      }
+  
+      // Get existing order to check for existing files in the same folder
+      const existingOrder = await OrderModel.findById(orderId);
+      if (!existingOrder) {
+        return res.status(404).json({ success: false, message: "Order not found" });
+      }
+  
+      // Determine the field to check for existing files
+      const existingFiles = uploaderType === "user" ? existingOrder.userFiles : existingOrder.adminFiles;
+      
+      // Find the highest version number for files in this folder
+      const filesInFolder = existingFiles.filter(file => file.folderName === folderName.trim());
+      const maxVersion = filesInFolder.length > 0 
+        ? Math.max(...filesInFolder.map(f => f.fileVersion || 1))
+        : 0;
+  
+      // Prepare files with enhanced metadata
+      const filesToAdd = result.images.map((file, index) => ({
+        fileUrl: file.fileUrl || file,
+        fileName: req.files ? req.files[index]?.originalname || `File ${index + 1}` : `File ${index + 1}`,
+        folderName: folderName.trim(),
+        uploadedAt: new Date(),
+        uploadedBy: uploaderType,
+        fileVersion: maxVersion + index + 1
+      }));
+  
+      const updateField =
+        uploaderType === "user"
+          ? { $push: { userFiles: { $each: filesToAdd } } }
+          : { $push: { adminFiles: { $each: filesToAdd } } };
+  
+      const updatedOrder = await OrderModel.findByIdAndUpdate(
+        orderId,
+        updateField,
+        { new: true }
+      ).populate('userId', 'name email');
+  
+      res.status(200).json({
+        success: true,
+        message: "Files uploaded and attached to order successfully",
+        files: filesToAdd,
+        order: updatedOrder,
+      });
+    } catch (err) {
+      console.error("Upload failed:", err);
+      res
         .status(500)
         .json({
           success: false,
-          message: "File upload failed",
-          error: result.error,
+          message: "Internal server error",
+          error: err.message,
         });
     }
-
-    const filesToAdd = result.images;
-
-    const updateField =
-      uploaderType === "user"
-        ? { $push: { userFiles: { $each: filesToAdd } } }
-        : { $push: { adminFiles: { $each: filesToAdd } } };
-
-    const updatedOrder = await OrderModel.findByIdAndUpdate(
-      orderId,
-      updateField,
-      { new: true }
-    );
-
-    res.status(200).json({
-      success: true,
-      message: "Files uploaded and attached to order successfully",
-      files: filesToAdd,
-      order: updatedOrder,
-    });
-  } catch (err) {
-    console.error("Upload failed:", err);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Internal server error",
-        error: err.message,
-      });
-  }
-};
-
+  };
 
 export const deleteImageController = async (req, res) => {
   try {
@@ -811,3 +913,261 @@ export const deleteImageController = async (req, res) => {
     });
   }
 };
+
+export const deleteOrderFile = async (req, res) => {
+  try {
+    const { fileUrl, fileType, orderId } = req.body;
+
+    if (!fileUrl || !fileType || !orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required parameters: fileUrl, fileType, orderId",
+      });
+    }
+
+    if (!["user", "admin"].includes(fileType)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid fileType. Must be 'user' or 'admin'",
+      });
+    }
+
+    // Find and update the order by removing the specific file
+    const fieldToUpdate = fileType === "user" ? "userFiles" : "adminFiles";
+
+    const updatedOrder = await OrderModel.findByIdAndUpdate(
+      orderId,
+      {
+        $pull: {
+          [fieldToUpdate]: { fileUrl: fileUrl },
+        },
+      },
+      { new: true }
+    ).populate("userId", "name email");
+
+    if (!updatedOrder) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Optionally, delete the file from storage (implement based on your storage solution)
+    const result = await deleteImage(fileUrl);
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.error || "Failed to delete file from cloud",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "File deleted successfully",
+      order: updatedOrder,
+    });
+  } catch (error) {
+    console.error("Delete file error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+export const downloadAllOrderFiles = async (req, res) => {
+  try {
+    const { orderId, fileType } = req.body;
+
+    if (!orderId || !fileType) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required parameters: orderId, fileType",
+      });
+    }
+
+    if (!["user", "admin"].includes(fileType)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid fileType. Must be 'user' or 'admin'",
+      });
+    }
+
+    const order = await OrderModel.findById(orderId);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    const files = fileType === "user" ? order.userFiles : order.adminFiles;
+
+    if (!files || files.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No ${fileType} files found for this order`,
+      });
+    }
+
+    // Set response headers
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${fileType}_files_${orderId}.zip"`
+    );
+
+    // Pipe archive to response
+    archive.pipe(res);
+
+    // Add files to archive
+    const downloadPromises = files.map((file, index) => {
+      return new Promise((resolve, reject) => {
+        const fileUrl = file.fileUrl;
+        const fileName = file.fileName || `file_${index + 1}`;
+        const folderName = file.folderName || "uncategorized";
+        const filePath = `${folderName}/${fileName}`;
+
+        // Determine protocol
+        const client = fileUrl.startsWith("https") ? https : http;
+
+        client
+          .get(fileUrl, (response) => {
+            if (response.statusCode === 200) {
+              archive.append(response, { name: filePath });
+              response.on("end", resolve);
+            } else {
+              console.error(`Failed to download file: ${fileUrl}`);
+              resolve(); // Continue with other files
+            }
+          })
+          .on("error", (err) => {
+            console.error(`Error downloading file ${fileUrl}:`, err);
+            resolve(); // Continue with other files
+          });
+      });
+    });
+
+    // Wait for all files to be added
+    Promise.all(downloadPromises)
+      .then(() => {
+        archive.finalize();
+      })
+      .catch((error) => {
+        console.error("Error creating ZIP:", error);
+        res.status(500).json({
+          success: false,
+          message: "Error creating ZIP file",
+          error: error.message,
+        });
+      });
+  } catch (error) {
+    console.error("Download all files error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+export const getOrderFilesGrouped = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await OrderModel.findById(orderId).populate(
+      "userId",
+      "name email"
+    );
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Group files by folder
+    const groupUserFiles = (order.userFiles || []).reduce((acc, file) => {
+      const folder = file.folderName || "Uncategorized";
+      if (!acc[folder]) acc[folder] = [];
+      acc[folder].push(file);
+      return acc;
+    }, {});
+
+    const groupAdminFiles = (order.adminFiles || []).reduce((acc, file) => {
+      const folder = file.folderName || "Uncategorized";
+      if (!acc[folder]) acc[folder] = [];
+      acc[folder].push(file);
+      return acc;
+    }, {});
+
+    res.status(200).json({
+      success: true,
+      order: {
+        _id: order._id,
+        userId: order.userId,
+        userFiles: groupUserFiles,
+        adminFiles: groupAdminFiles,
+        totalUserFiles: order.userFiles?.length || 0,
+        totalAdminFiles: order.adminFiles?.length || 0,
+      },
+    });
+  } catch (error) {
+    console.error("Get order files error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+export const downloadAllOrderFilesSimple = async (req, res) => {
+  try {
+    const { orderId, fileType } = req.body;
+
+    if (!orderId || !fileType) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required parameters: orderId, fileType",
+      });
+    }
+
+    const order = await OrderModel.findById(orderId);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    const files = fileType === "user" ? order.userFiles : order.adminFiles;
+
+    if (!files || files.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No ${fileType} files found for this order`,
+      });
+    }
+
+    // Return file URLs for frontend to handle download
+    res.status(200).json({
+      success: true,
+      files: files.map((file) => ({
+        url: file.fileUrl,
+        name: file.fileName,
+        folder: file.folderName,
+      })),
+    });
+  } catch (error) {
+    console.error("Download all files error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+  

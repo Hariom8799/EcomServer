@@ -1157,6 +1157,7 @@ export async function updateProduct(request, response) {
   try {
     const productId = request.params.id;
 
+    console.log("hhhh", request.body)
     // Get existing files to keep (if any)
     const existingFiles = request.body.existingFiles
       ? JSON.parse(request.body.existingFiles)
@@ -1235,6 +1236,7 @@ export async function updateProduct(request, response) {
       error: false,
     });
   } catch (error) {
+    console.log("error", error)
     return response.status(500).json({
       message: error.message || error,
       error: true,
@@ -1242,6 +1244,100 @@ export async function updateProduct(request, response) {
     });
   }
 }
+// export async function updateProduct(request, response) {
+//   try {
+//     const productId = request.params.id;
+
+//     // Parse existing files from request
+//     const existingFiles = request.body.existingFiles
+//       ? JSON.parse(request.body.existingFiles)
+//       : [];
+
+//     // Upload new files if any
+//     let newUploadedFiles = [];
+//     if (request.files && request.files.length > 0) {
+//       const folderName = request.body.folderName || "default";
+
+//       for (const file of request.files) {
+//         try {
+//           // Upload to your cloud storage (Cloudinary, AWS S3, etc.)
+//           const uploadResult = await uploadFiles(request);
+//           if (!uploadResult.success) {
+//                 return response.status(500).json({
+//                     message: uploadResult.error,
+//                     success: false,
+//                     error: true,
+//                 });
+//             }
+//         //   newUploadedFiles.push({
+//         //     fileUrl: uploadResult.secure_url,
+//         //     fileName: file.originalname,
+//         //     folderName: folderName,
+//         //   });
+//             newUploadedFiles = uploadResult.images;
+//         } catch (uploadError) {
+//           console.error("File upload error:", uploadError);
+//         }
+//       }
+//     }
+
+//     // Combine existing and new files
+//     const finalFiles = [...existingFiles, ...newUploadedFiles];
+
+//     // Update the product
+//     const updatedProduct = await ProductModel.findByIdAndUpdate(
+//       productId,
+//       {
+//         name: request.body.name,
+//         subCat: request.body.subCat,
+//         description: request.body.description,
+//         bannerimages: request.body.bannerimages,
+//         bannerTitleName: request.body.bannerTitleName,
+//         isDisplayOnHomeBanner: request.body.isDisplayOnHomeBanner,
+//         images: request.body.images,
+//         brand: request.body.brand,
+//         price: request.body.price,
+//         oldPrice: request.body.oldPrice,
+//         catId: request.body.catId,
+//         catName: request.body.catName,
+//         subCatId: request.body.subCatId,
+//         category: request.body.category,
+//         thirdsubCat: request.body.thirdsubCat,
+//         thirdsubCatId: request.body.thirdsubCatId,
+//         countInStock: request.body.countInStock,
+//         rating: request.body.rating,
+//         isFeatured: request.body.isFeatured,
+//         productRam: request.body.productRam,
+//         size: request.body.size,
+//         productWeight: request.body.productWeight,
+//         files: finalFiles,
+//       },
+//       { new: true }
+//     );
+
+//     if (!updatedProduct) {
+//       return response.status(404).json({
+//         message: "The product could not be updated!",
+//         success: false,
+//         error: true,
+//       });
+//     }
+
+//     return response.status(200).json({
+//       message: "The product has been updated.",
+//       product: updatedProduct,
+//       success: true,
+//       error: false,
+//     });
+//   } catch (error) {
+//     console.log("error   ", error)
+//     return response.status(500).json({
+//       message: error.message || error,
+//       error: true,
+//       success: false,
+//     });
+//   }
+// }
 
 
 

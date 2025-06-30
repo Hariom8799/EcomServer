@@ -4,6 +4,17 @@ const fileSchema = new mongoose.Schema({
   fileUrl: { type: String },
   fileName: { type: String },
   folderName: { type: String },
+  uploadedAt : {
+    type: Date,
+    default :  new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  },
+  uploadedBy : {
+    type : String
+  },
+  fileVersion:{
+    type : Number,
+    default : 1
+  }
 });
 
 const orderSchema = new mongoose.Schema(
