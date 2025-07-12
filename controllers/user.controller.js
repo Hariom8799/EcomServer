@@ -405,9 +405,6 @@ export async function loginUserController(request, response) {
             })
         }
 
-        console.log("password ", password);
-        console.log("user password", user.password);
-
         const checkPassword = await bcrypt.compare(password, user.password);
         if (!checkPassword) {
             return response.status(400).json({
@@ -443,7 +440,8 @@ export async function loginUserController(request, response) {
                 accesstoken,
                 refreshToken,
                 modules: user.modules,
-                id : user._id
+                id : user._id,
+                userName : user?.name
             }
         })
     } catch (error) {

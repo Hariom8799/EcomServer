@@ -509,10 +509,6 @@ export const totalSalesController = async (request, response) => {
     }
 }
 
-
-
-
-
 export const totalUsersController = async (request, response) => {
     try {
         const users = await UserModel.aggregate([

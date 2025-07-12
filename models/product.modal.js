@@ -10,6 +10,23 @@ const fileSchema = new mongoose.Schema({
   folderName: {
     type: String,
   },
+  uploadedAt: {
+    type: Date,
+    default: new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
+  },
+  updatedAt: {
+    type: Date,
+    default: new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
+  },
+  uploadedBy: {
+    type: String,
+    required: false,
+    ref: "User",
+  },
+  fileVersion: {
+    type: Number,
+    default: 1,
+  },
 });
 
 const productSchema = mongoose.Schema({

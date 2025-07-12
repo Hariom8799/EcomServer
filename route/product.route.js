@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import auth from '../middlewares/auth.js';
 import upload from '../middlewares/multer.js';
-import {createProduct, createProductRAMS, deleteMultipleProduct, deleteProduct, deleteProductRAMS, getAllFeaturedProducts, getAllProducts, getAllProductsByCatId, getAllProductsByCatName, getAllProductsByPrice, getAllProductsByRating, getAllProductsBySubCatId, getAllProductsBySubCatName, getAllProductsByThirdLavelCatId, getProduct, getProductRams, getProductsCount, updateProduct, updateProductRam, uploadImages, getProductRamsById, createProductWEIGHT, deleteProductWEIGHT, updateProductWeight, getProductWeight, getProductWeightById, createProductSize, deleteProductSize, updateProductSize, getProductSize, getProductSizeById, uploadBannerImages, getAllProductsBanners, filters, sortBy, searchProductController, addFilesToProduct} from '../controllers/product.controller.js';
+import {createProduct, createProductRAMS, deleteMultipleProduct, deleteProduct, deleteProductRAMS, getAllFeaturedProducts, getAllProducts, getAllProductsByCatId, getAllProductsByCatName, getAllProductsByPrice, getAllProductsByRating, getAllProductsBySubCatId, getAllProductsBySubCatName, getAllProductsByThirdLavelCatId, getProduct, getProductRams, getProductsCount, updateProduct, updateProductRam, uploadImages, getProductRamsById, createProductWEIGHT, deleteProductWEIGHT, updateProductWeight, getProductWeight, getProductWeightById, createProductSize, deleteProductSize, updateProductSize, getProductSize, getProductSizeById, uploadBannerImages, getAllProductsBanners, filters, sortBy, searchProductController, addFilesToProduct, downloadAllProductFiles, deleteFileFromProduct, deleteMultipleFilesFromProduct} from '../controllers/product.controller.js';
 
 import {removeImageFromCloudinary} from '../controllers/category.controller.js';
 
@@ -71,5 +71,15 @@ productRouter.post(
   upload.array("files"),
   addFilesToProduct
 );
+
+productRouter.delete(
+  "/products/:productId/files/:fileId",
+  deleteFileFromProduct
+);
+productRouter.delete(
+  "/products/:productId/files",
+  deleteMultipleFilesFromProduct
+);
+productRouter.post("/download-all-files", downloadAllProductFiles);
 
 export default productRouter;
