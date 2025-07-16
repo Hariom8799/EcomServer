@@ -775,6 +775,89 @@ export async function deleteOrder(request, response) {
 // };
 
 // Updated uploadOrderFiles function
+// export const uploadOrderFiles = async (req, res) => {
+//     try {
+//       const { orderId, uploaderType, folderName } = req.body;
+  
+//       if (!orderId || !["user", "admin"].includes(uploaderType)) {
+//         return res
+//           .status(400)
+//           .json({ success: false, message: "Invalid orderId or uploaderType" });
+//       }
+  
+//       if (!folderName || folderName.trim() === "") {
+//         return res
+//           .status(400)
+//           .json({ success: false, message: "Folder name is required" });
+//       }
+  
+//       // Use your existing uploadFiles helper function
+//       const result = await uploadFiles(req);
+  
+//       if (!result.success) {
+//         return res
+//           .status(500)
+//           .json({
+//             success: false,
+//             message: "File upload failed",
+//             error: result.error,
+//           });
+//       }
+  
+//       // Get existing order to check for existing files in the same folder
+//       const existingOrder = await OrderModel.findById(orderId);
+//       if (!existingOrder) {
+//         return res.status(404).json({ success: false, message: "Order not found" });
+//       }
+  
+//       // Determine the field to check for existing files
+//       const existingFiles = uploaderType === "user" ? existingOrder.userFiles : existingOrder.adminFiles;
+      
+//       // Find the highest version number for files in this folder
+//       const filesInFolder = existingFiles.filter(file => file.folderName === folderName.trim());
+//       const maxVersion = filesInFolder.length > 0 
+//         ? Math.max(...filesInFolder.map(f => f.fileVersion || 1))
+//         : 0;
+  
+//       // Prepare files with enhanced metadata
+//       const filesToAdd = result.images.map((file, index) => ({
+//         fileUrl: file.fileUrl || file,
+//         fileName: req.files ? req.files[index]?.originalname || `File ${index + 1}` : `File ${index + 1}`,
+//         folderName: folderName.trim(),
+//         uploadedAt: new Date(),
+//         uploadedBy: uploaderType,
+//         fileVersion: maxVersion + index + 1
+//       }));
+  
+//       const updateField =
+//         uploaderType === "user"
+//           ? { $push: { userFiles: { $each: filesToAdd } } }
+//           : { $push: { adminFiles: { $each: filesToAdd } } };
+  
+//       const updatedOrder = await OrderModel.findByIdAndUpdate(
+//         orderId,
+//         updateField,
+//         { new: true }
+//       ).populate('userId', 'name email');
+  
+//       res.status(200).json({
+//         success: true,
+//         message: "Files uploaded and attached to order successfully",
+//         files: filesToAdd,
+//         order: updatedOrder,
+//       });
+//     } catch (err) {
+//       console.error("Upload failed:", err);
+//       res
+//         .status(500)
+//         .json({
+//           success: false,
+//           message: "Internal server error",
+//           error: err.message,
+//         });
+//     }
+//   };
+
 export const uploadOrderFiles = async (req, res) => {
     try {
       const { orderId, uploaderType, folderName } = req.body;
@@ -813,21 +896,32 @@ export const uploadOrderFiles = async (req, res) => {
       // Determine the field to check for existing files
       const existingFiles = uploaderType === "user" ? existingOrder.userFiles : existingOrder.adminFiles;
       
-      // Find the highest version number for files in this folder
+      // Filter files in the same folder
       const filesInFolder = existingFiles.filter(file => file.folderName === folderName.trim());
-      const maxVersion = filesInFolder.length > 0 
-        ? Math.max(...filesInFolder.map(f => f.fileVersion || 1))
-        : 0;
   
       // Prepare files with enhanced metadata
-      const filesToAdd = result.images.map((file, index) => ({
-        fileUrl: file.fileUrl || file,
-        fileName: req.files ? req.files[index]?.originalname || `File ${index + 1}` : `File ${index + 1}`,
-        folderName: folderName.trim(),
-        uploadedAt: new Date(),
-        uploadedBy: uploaderType,
-        fileVersion: maxVersion + index + 1
-      }));
+      const filesToAdd = result.images.map((file, index) => {
+        const currentFileName = req.files ? req.files[index]?.originalname || `File ${index + 1}` : `File ${index + 1}`;
+        
+        // Find files with the same name in the same folder
+        const filesWithSameName = filesInFolder.filter(existingFile => 
+          existingFile.fileName === currentFileName
+        );
+        
+        // If files with same name exist, increment version; otherwise start at 1
+        const fileVersion = filesWithSameName.length > 0 
+          ? Math.max(...filesWithSameName.map(f => f.fileVersion || 1)) + 1
+          : 1;
+  
+        return {
+          fileUrl: file.fileUrl || file,
+          fileName: currentFileName,
+          folderName: folderName.trim(),
+          uploadedAt: new Date(),
+          uploadedBy: uploaderType,
+          fileVersion: fileVersion
+        };
+      });
   
       const updateField =
         uploaderType === "user"

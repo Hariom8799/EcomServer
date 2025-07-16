@@ -50,6 +50,73 @@ cloudinary.config({
 //   }
 // }
 
+// export async function uploadFiles(request) {
+//   try {
+//     const filesArray = [];
+//     const files = request.files;
+
+//     if (!files || files.length === 0) {
+//       return { success: true, images: [] };
+//     }
+
+//     // Extract arrays from form data
+//     const fileNames = Array.isArray(request.body.fileNames)
+//       ? request.body.fileNames
+//       : [request.body.fileNames];
+//     const folderNames = Array.isArray(request.body.folderNames)
+//       ? request.body.folderNames
+//       : [request.body.folderNames];
+//     const uploadedByArray = Array.isArray(request.body.uploadedBy)
+//       ? request.body.uploadedBy
+//       : [request.body.uploadedBy];
+//     const uploadedAtArray = Array.isArray(request.body.uploadedAt)
+//       ? request.body.uploadedAt
+//       : [request.body.uploadedAt];
+//     const fileVersionArray = Array.isArray(request.body.fileVersion)
+//       ? request.body.fileVersion
+//       : [request.body.fileVersion];
+
+//     for (let i = 0; i < files.length; i++) {
+//       const file = files[i];
+//       const fileName = Array.isArray(fileNames) ? fileNames[i] : fileNames;
+//             const folderName = Array.isArray(folderNames)
+//               ? folderNames[i]
+//               : folderNames;
+
+//       const cloudinaryOptions = {
+//         folder: folderName ? `ProductFile/${folderName}` : "ProductFile",
+//         use_filename: true,
+//         unique_filename: false,
+//         public_id: fileName ? fileName.split(".")[0] : undefined,
+//       };
+
+//       // Your existing file upload logic (Cloudinary/S3)
+//       const uploadResult = await cloudinary.uploader.upload(
+//         file.path,
+//         cloudinaryOptions
+//       );
+
+//       // if (uploadResult.success) {
+//       filesArray.push({
+//         fileUrl: uploadResult.secure_url,
+//         fileName: fileNames[i] || file.originalname,
+//         folderName: folderNames[i] || "default",
+//         uploadedBy: uploadedByArray[i] || null,
+//         uploadedAt: uploadedAtArray[i] || new Date().toISOString(),
+//         fileVersion: parseInt(fileVersionArray[i]) || 1,
+//       });
+//       fs.unlinkSync(file.path);
+//       // }
+//     }
+
+//     return { success: true, images: filesArray };
+//   } catch (error) {
+//     // fs.unlinkSync(file.path);
+//     console.log("error in the file upload ", error)
+//     return { success: false, error: error.message };
+//   }
+// }
+
 export async function uploadFiles(request) {
   try {
     const filesArray = [];
@@ -72,16 +139,13 @@ export async function uploadFiles(request) {
     const uploadedAtArray = Array.isArray(request.body.uploadedAt)
       ? request.body.uploadedAt
       : [request.body.uploadedAt];
-    const fileVersionArray = Array.isArray(request.body.fileVersion)
-      ? request.body.fileVersion
-      : [request.body.fileVersion];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const fileName = Array.isArray(fileNames) ? fileNames[i] : fileNames;
-            const folderName = Array.isArray(folderNames)
-              ? folderNames[i]
-              : folderNames;
+      const folderName = Array.isArray(folderNames)
+        ? folderNames[i]
+        : folderNames;
 
       const cloudinaryOptions = {
         folder: folderName ? `ProductFile/${folderName}` : "ProductFile",
@@ -96,23 +160,21 @@ export async function uploadFiles(request) {
         cloudinaryOptions
       );
 
-      // if (uploadResult.success) {
       filesArray.push({
         fileUrl: uploadResult.secure_url,
         fileName: fileNames[i] || file.originalname,
         folderName: folderNames[i] || "default",
         uploadedBy: uploadedByArray[i] || null,
         uploadedAt: uploadedAtArray[i] || new Date().toISOString(),
-        fileVersion: parseInt(fileVersionArray[i]) || 1,
+        fileVersion: 1, // Default version, will be calculated in uploadOrderFiles
       });
+
       fs.unlinkSync(file.path);
-      // }
     }
 
     return { success: true, images: filesArray };
   } catch (error) {
-    // fs.unlinkSync(file.path);
-    console.log("error in the file upload ", error)
+    console.log("error in the file upload ", error);
     return { success: false, error: error.message };
   }
 }

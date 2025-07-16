@@ -210,9 +210,10 @@ export async function updateUserByAdmin(request, response) {
     if (name !== undefined) updateFields.name = name;
     if (email !== undefined) updateFields.email = email;
     if (mobile !== undefined) updateFields.mobile = mobile;
-    if (password !== undefined){
+    if (password !== undefined && password !== null && password.trim() !== '') {
         const salt = await bcrypt.genSalt(10);
-      updateFields.password = await bcrypt.hash(password, salt);}
+        updateFields.password = await bcrypt.hash(password, salt);
+    }
     if (role !== undefined && ["ADMIN", "USER"].includes(role))
       updateFields.role = role;
     if (modules !== undefined)
@@ -1034,6 +1035,84 @@ export async function getAllUsers(request, response) {
         })
     }
 }
+
+//admin users 
+export async function getAdminUsers(request, response) {
+    try {
+        const { page=1, limit=50 } = request.query;
+
+        const totalUsers = await UserModel.find({ role: "ADMIN" });
+
+        const users = await UserModel.find({ role: "ADMIN" }).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(parseInt(limit));
+
+        const total = await UserModel.countDocuments(users);
+
+        if(!users){
+            return response.status(400).json({
+                error: true,
+                success: false
+            })
+        }
+
+        return response.status(200).json({
+            error: false,
+            success: true,
+            users:users,
+            total: total,
+            page: parseInt(page),
+            totalPages: Math.ceil(total / limit),
+            totalUsersCount:totalUsers?.length,
+            totalUsers:totalUsers
+        })
+        
+    } catch (error) {
+        return response.status(500).json({
+            message: "Something is wrong",
+            error: true,
+            success: false
+        })
+    }
+}
+
+export async function getOnlyUsers(request, response) {
+  try {
+    const { page=1, limit=50 } = request.query;
+
+    const totalUsers = await UserModel.find({ role: "USER" });
+
+    const users = await UserModel.find({ role: "USER" })
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await UserModel.countDocuments(users);
+
+    if (!users) {
+      return response.status(400).json({
+        error: true,
+        success: false,
+      });
+    }
+
+    return response.status(200).json({
+      error: false,
+      success: true,
+      users: users,
+      total: total,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / limit),
+      totalUsersCount: totalUsers?.length,
+      totalUsers: totalUsers,
+    });
+  } catch (error) {
+    return response.status(500).json({
+      message: "Something is wrong",
+      error: true,
+      success: false,
+    });
+  }
+}
+
 
 
 
