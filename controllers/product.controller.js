@@ -1674,54 +1674,6 @@ export async function searchProductController(request, response) {
 }
 
 
-// export async function addFilesToProduct(request, response) {
-//   try {
-//     const productId = request.params.id;
-
-//     // Check if product exists
-//     const product = await ProductModel.findById(productId);
-//     if (!product) {
-//       return response.status(404).json({
-//         message: "Product not found",
-//         success: false,
-//         error: true,
-//       });
-//     }
-
-//     // Upload new files (from form-data)
-//     let uploadedFiles = [];
-//     if (request.files && request.files.length > 0) {
-//       const uploadResult = await uploadFiles(request);
-//       if (!uploadResult.success) {
-//         return response.status(500).json({
-//           message: uploadResult.error,
-//           success: false,
-//           error: true,
-//         });
-//       }
-//       uploadedFiles = uploadResult.images;
-//     }
-
-//     // Append to existing files
-//     product.files.push(...uploadedFiles);
-
-//     const updatedProduct = await product.save();
-
-//     return response.status(200).json({
-//       message: "Files added to product successfully",
-//       product: updatedProduct,
-//       success: true,
-//       error: false,
-//     });
-//   } catch (error) {
-//     return response.status(500).json({
-//       message: error.message || error,
-//       success: false,
-//       error: true,
-//     });
-//   }
-// }
-
 export async function addFilesToProduct(request, response) {
   try {
     const productId = request.params.id;
@@ -1927,7 +1879,6 @@ export async function deleteFileFromProduct(request, response) {
   }
 }
 
-// Backend - Add this function to handle multiple file deletion
 export async function deleteMultipleFilesFromProduct(request, response) {
   try {
     const { productId } = request.params;
@@ -2011,3 +1962,73 @@ export async function deleteMultipleFilesFromProduct(request, response) {
     });
   }
 }
+
+export const getFilteredProducts = async (req, res) => {
+    console.log("query object : ", req.query)
+    try {
+    const {
+      page = 1,
+      limit = 50,
+      catId,
+      subCatId,
+      thirdsubCatId,
+      search,
+    } = req.query;
+
+
+    // Build filter object
+    let filter = {};
+
+    // Apply category filters in AND logic
+    if (catId && catId !== "null" && catId !== "") {
+      filter.catId = catId;
+    }
+    if (subCatId && subCatId !== "null" && subCatId !== "") {
+      filter.subCatId = subCatId;
+    }
+    if (thirdsubCatId && thirdsubCatId !== "null" && thirdsubCatId !== "") {
+      filter.thirdsubCatId = thirdsubCatId;
+    }
+
+    // Apply search filter
+    if (search && search !== "") {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { catName: { $regex: search, $options: "i" } },
+        { subCat: { $regex: search, $options: "i" } },
+        { thirdsubCat: { $regex: search, $options: "i" } },
+        { _id: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get filtered products
+    const products = await ProductModel.find(filter)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+
+    // Get total count for pagination
+    const totalCount = await ProductModel.countDocuments(filter);
+    const totalPages = Math.ceil(totalCount / parseInt(limit));
+
+    res.status(200).json({
+      error: false,
+      success: true,
+      products: products,
+      total: products.length,
+      page: parseInt(page),
+      totalPages: totalPages,
+      totalCount: totalCount,
+    });
+  } catch (error) {
+    console.error("Error in getFilteredProducts:", error);
+    res.status(500).json({
+      error: true,
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};

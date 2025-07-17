@@ -455,7 +455,88 @@ export async function loginUserController(request, response) {
 
 }
 
+export async function loginAdminUserController(request, response) {
+  try {
+    const { email, password } = request.body;
 
+    const user = await UserModel.findOne({ email: email });
+
+    if (!user) {
+      return response.status(400).json({
+        message: "User not register",
+        error: true,
+        success: false,
+      });
+    }
+
+    if (user.status !== "Active") {
+      return response.status(400).json({
+        message: "Contact to admin",
+        error: true,
+        success: false,
+      });
+    }
+
+    if (user.verify_email !== true) {
+      return response.status(400).json({
+        message: "Your Email is not verify yet please verify your email first",
+        error: true,
+        success: false,
+      });
+    }
+
+    if(user.role !== "ADMIN"){
+        return response.status(403).json({
+            message: "You are not authorized to access this resource",
+            error: true,
+            success: false,
+        });
+    }
+
+    const checkPassword = await bcrypt.compare(password, user.password);
+    if (!checkPassword) {
+      return response.status(400).json({
+        message: "Check your password",
+        error: true,
+        success: false,
+      });
+    }
+
+    const accesstoken = await generatedAccessToken(user._id);
+    const refreshToken = await genertedRefreshToken(user._id);
+
+    const updateUser = await UserModel.findByIdAndUpdate(user?._id, {
+      last_login_date: new Date(),
+    });
+
+    const cookiesOption = {
+      httpOnly: true,
+      secure: true,
+      sameSite: "None",
+    };
+    response.cookie("accessToken", accesstoken, cookiesOption);
+    response.cookie("refreshToken", refreshToken, cookiesOption);
+
+    return response.json({
+      message: "Login successfully",
+      error: false,
+      success: true,
+      data: {
+        accesstoken,
+        refreshToken,
+        modules: user.modules,
+        id: user._id,
+        userName: user?.name,
+      },
+    });
+  } catch (error) {
+    return response.status(500).json({
+      message: error.message || error,
+      error: true,
+      success: false,
+    });
+  }
+}
 
 //logout controller
 export async function logoutController(request, response) {

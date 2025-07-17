@@ -1,10 +1,11 @@
 import { Router } from 'express'
-import {addReview, authWithGoogle, deleteMultiple, deleteUser, forgotPasswordController, getAllReviews, getAllUsers, getReviews, loginUserController, logoutController, refreshToken, registerUserController, removeImageFromCloudinary, resetpassword, updateUserDetails, userAvatarController, userDetails, verifyEmailController, verifyForgotPasswordOtp, createUserByAdmin, updateUserByAdmin, sendOtp, getAdminUsers, getOnlyUsers} from '../controllers/user.controller.js';
+import {addReview, authWithGoogle, deleteMultiple, deleteUser, forgotPasswordController, getAllReviews, getAllUsers, getReviews, loginUserController, logoutController, refreshToken, registerUserController, removeImageFromCloudinary, resetpassword, updateUserDetails, userAvatarController, userDetails, verifyEmailController, verifyForgotPasswordOtp, createUserByAdmin, updateUserByAdmin, sendOtp, getAdminUsers, getOnlyUsers, loginAdminUserController} from '../controllers/user.controller.js';
 import auth from '../middlewares/auth.js';
 import upload from '../middlewares/multer.js';
 
 const userRouter = Router()
 userRouter.post("/admin/users", createUserByAdmin);
+userRouter.post("/admin/login", loginAdminUserController);
 userRouter.put("/admin/users/:id", updateUserByAdmin);
 userRouter.post('/register',registerUserController)
 userRouter.post('/verifyEmail',verifyEmailController)
